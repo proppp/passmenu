@@ -48,31 +48,47 @@ while [ "$DONE" -eq 0 ] ; do
       STARTDIR="$STARTDIR/$entry"
       LEVEL=$((LEVEL+1))
     else
-
       # not a directory so it must be a real password entry
       [[ -n "$SELECTION" ]] || exit
 
-      data="$(pass show "$SELECTION" 2>/dev/null)"
+      # Check if password name starts with "otp"
+      if [[ "$entry" == otp* ]]; then
+        otp_data=$(pass otp "$SELECTION" 2>/dev/null)
+        [[ -n "$otp_data" ]] || exit
 
-      [[ -n "$data" ]] || exit
+        case $typeit in
+          0 )
+            echo "$otp_data" | xclip -selection clipboard
+            ;;
+          1 )
+            echo "$otp_data" | xdotool type --clearmodifiers --file -
+            ;;
+          2 )
+            echo "$otp_data" | xdotool type --clearmodifiers --file -
+            echo "$otp_data" | xclip -selection clipboard
+            ;;
+        esac
+      else
+        data="$(pass show "$SELECTION" 2>/dev/null)"
+        [[ -n "$data" ]] || exit
 
-      case $typeit in
-	    0 )
-		pass show -c "$SELECTION"
-		;;
-	    1 )
-		pass show "$SELECTION" \
-		    | { read -r pass; printf %s "$pass"; } \
-		    | xdotool type --clearmodifiers --file -
-		;;
-	    2 )
-		<<<"$data" tail -n +2 | sed -ne '/^login: /I s/^login: // p' | xdotool type --clearmodifiers --file -
-		pass show -c "$SELECTION"
-		;;
-      esac
+        case $typeit in
+          0 )
+            pass show -c "$SELECTION"
+            ;;
+          1 )
+            pass show "$SELECTION" \
+              | { read -r pass; printf %s "$pass"; } \
+              | xdotool type --clearmodifiers --file -
+            ;;
+          2 )
+            <<<"$data" tail -n +2 | sed -ne '/^login: /I s/^login: // p' | xdotool type --clearmodifiers --file -
+            pass show -c "$SELECTION"
+            ;;
+        esac
+      fi
       DONE=1
     fi
-
   else
     LEVEL=$((LEVEL-1))
     SELECTION=$PREVSELECTION
